@@ -1,0 +1,95 @@
+The following runs in a docker stack comprising a debian container and a mariadb container on the same network. create a script to run inside the debian container that downloads the following files to /media/bom_data/ : ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDV60910.tgz ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDN60910.tgz ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDQ60910.tgz ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDW60910.tgz ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDS60910.tgz ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDT60910.tgz ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDD60910.tgz extract the above files into /media/temp/ , don't sort into seperate directories.
+
+using the mariadb credentials, user=my_user, password=Grower9-Detection-Eccentric-Womb 
+do the following with the extracted files:
+
+for files beginning with "IDV", add the .xml files to a temporary table in mariadb, then insert the data into the "Victoria" table while ignoring existing entries. Finally, clean up the temporary table.
+
+for files beginning with "IDN", add the .xml files to a temporary table in mariadb, then insert the data into the "New South Wales" table while ignoring existing entries. Finally, clean up the temporary table.
+
+for files beginning with "IDQ", add the .xml files to a temporary table in mariadb, then insert the data into the "Queensland" table while ignoring existing entries. Finally, clean up the temporary table.
+
+for files beginning with "IDW", add the .xml files to a temporary table in mariadb, then insert the data into the "Western Australia" table while ignoring existing entries. Finally, clean up the temporary table.
+
+for files beginning with "IDS", add the .xml files to a temporary table in mariadb, then insert the data into the "South Australia" table while ignoring existing entries. Finally, clean up the temporary table.
+
+for files beginning with "IDT", add the .xml files to a temporary table in mariadb, then insert the data into the "Tasmania" table while ignoring existing entries. Finally, clean up the temporary table.
+
+for files beginning with "IDD", add the .xml files to a temporary table in mariadb, then insert the data into the "Northern Territory" table while ignoring existing entries. Finally, clean up the temporary table.
+
+#!/bin/bash
+
+# change to the directory where the files should be downloaded
+cd /media/bom_data/
+
+# download the files from the BOM ftp server
+wget ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDV60910.tgz
+wget ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDN60910.tgz
+wget ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDQ60910.tgz
+wget ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDW60910.tgz
+wget ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDS60910.tgz
+wget ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDT60910.tgz
+wget ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDD60910.tgz
+
+# extract the downloaded files
+tar -xf IDV60910.tgz -C /media/temp/
+tar -xf IDN60910.tgz -C /media/temp/
+tar -xf IDQ60910.tgz -C /media/temp/
+tar -xf IDW60910.tgz -C /media/temp/
+tar -xf IDS60910.tgz -C /media/temp/
+tar -xf IDT60910.tgz -C /media/temp/
+tar -xf IDD60910.tgz -C /media/temp/
+
+# create a temporary table in mariadb
+mysql -u my_user -pGrower9-Detection-Eccentric-Womb << EOF
+CREATE TABLE temp_table (xml_data TEXT);
+EOF
+
+# add the xml files to the temporary table
+for file in /media/temp/*.xml
+do
+    mysql -u my_user -pGrower9-Detection-Eccentric-Womb << EOF
+    INSERT INTO temp_table (xml_data) VALUES (LOAD_FILE('$file'));
+EOF
+done
+
+# insert data into the respective tables
+for file in /media/temp/*.xml
+do
+    if [[ $file == *"IDV"* ]]; then
+        mysql -u my_user -pGrower9-Detection-Eccentric-Womb << EOF
+        INSERT IGNORE INTO Victoria (xml_data) SELECT xml_data FROM temp_table;
+EOF
+    elif [[ $file == *"IDN"* ]]; then
+        mysql -u my_user -pGrower9-Detection-Eccentric-Womb << EOF
+        INSERT IGNORE INTO New South Wales (xml_data) SELECT xml_data FROM temp_table;
+EOF
+    elif [[ $file == *"IDQ"* ]]; then
+        mysql -u my_user -pGrower9-Detection-Eccentric-Womb << EOF
+        INSERT IGNORE INTO Queensland (xml_data) SELECT xml_data FROM temp_table;
+EOF
+    elif [[ $file == *"IDW"* ]]; then
+        mysql -u my_user -pGrower9-Detection-Eccentric-Womb << EOF
+        INSERT IGNORE INTO Western Australia (xml_data) SELECT xml_data FROM temp_table;
+EOF
+    elif [[ $file == *"IDS"* ]]; then
+        mysql -u my_user -pGrower9-Detection-Eccentric-Womb << EOF
+        INSERT IGNORE INTO South Australia (xml_data) SELECT xml_data FROM temp_table;
+EOF
+    elif [[ $file == *"IDT"* ]]; then
+        mysql -u my_user -pGrower9-Detection-Eccentric-Womb << EOF
+        INSERT IGNORE INTO Tasmania (xml_data) SELECT xml_data FROM temp_table;
+EOF
+    elif [[ $file == *"IDD"* ]]; then
+        mysql -u my_user -pGrower9-Detection-Eccentric-Womb << EOF
+        INSERT IGNORE INTO Northern Territory (xml_data) SELECT xml_data FROM temp_table;
+EOF
+    fi
+done
+
+# clean up the temporary table
+mysql -u my_user -pGrower9-Detection-Eccentric-Womb << EOF
+DROP TABLE temp_table;
+EOF
+
+exit 0

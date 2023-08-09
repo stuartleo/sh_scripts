@@ -1,0 +1,70 @@
+
+#!/bin/bash
+
+#get current date
+now=$(date +"%Y-%m-%d")
+
+#create directory for the bom data
+#mkdir /media/bom_data
+
+#download the files
+wget -P /media/bom_data/ ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDV60910.tgz -O /media/bom_data/IDV60910_$now.tgz
+wget -P /media/bom_data/ ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDN60910.tgz -O /media/bom_data/IDN60910_$now.tgz
+wget -P /media/bom_data/ ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDQ60910.tgz -O /media/bom_data/IDQ60910_$now.tgz
+wget -P /media/bom_data/ ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDW60910.tgz -O /media/bom_data/IDW60910_$now.tgz
+wget -P /media/bom_data/ ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDS60910.tgz -O /media/bom_data/IDS60910_$now.tgz
+wget -P /media/bom_data/ ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDT60910.tgz -O /media/bom_data/IDT60910_$now.tgz
+wget -P /media/bom_data/ ftp://anonymous:anonymous@ftp.bom.gov.au//anon/gen/fwo/IDD60910.tgz -O /media/bom_data/IDD60910_$now.tgz
+
+#create directory for extracted files
+#mkdir /media/temp
+
+#extract the files
+tar -xzvf /media/bom_data/IDV60910_$now.tgz -C /media/temp
+tar -xzvf /media/bom_data/IDN60910_$now.tgz -C /media/temp
+tar -xzvf /media/bom_data/IDQ60910_$now.tgz -C /media/temp
+tar -xzvf /media/bom_data/IDW60910_$now.tgz -C /media/temp
+tar -xzvf /media/bom_data/IDS60910_$now.tgz -C /media/temp
+tar -xzvf /media/bom_data/IDT60910_$now.tgz -C /media/temp
+tar -xzvf /media/bom_data/IDD60910_$now.tgz -C /media/temp
+
+#connect to mariadb
+mysql -u root -pDormitory-Outage0-Brought-Preachy -D bom
+
+#add IDV files to a temporary table and insert into the Victoria table
+for file in $(find /media/temp -name "IDV*"); do 
+    mysql -u root -pDormitory-Outage0-Brought-Preachy -D bom -e "CREATE TEMPORARY TABLE tmp (SELECT * FROM Victoria); LOAD XML LOCAL INFILE '$file' INTO TABLE tmp ROWS IDENTIFIED BY '<observation>'; INSERT IGNORE INTO Victoria SELECT * FROM tmp; DROP TABLE tmp;"
+done
+
+#add IDN files to a temporary table and insert into the NSW table
+for file in $(find /media/temp -name "IDN*"); do 
+    mysql -u root -pDormitory-Outage0-Brought-Preachy -D bom -e "CREATE TEMPORARY TABLE tmp (SELECT * FROM New_South_Wales); LOAD XML LOCAL INFILE '$file' INTO TABLE tmp ROWS IDENTIFIED BY '<observation>'; INSERT IGNORE INTO New_South_Wales SELECT * FROM tmp; DROP TABLE tmp;"
+done
+
+#add IDQ files to a temporary table and insert into the Queensland table
+for file in $(find /media/temp -name "IDQ*"); do 
+    mysql -u root -pDormitory-Outage0-Brought-Preachy -D bom -e "CREATE TEMPORARY TABLE tmp (SELECT * FROM Queensland); LOAD XML LOCAL INFILE '$file' INTO TABLE tmp ROWS IDENTIFIED BY '<observation>'; INSERT IGNORE INTO Queensland SELECT * FROM tmp; DROP TABLE tmp;"
+done
+
+#add IDW files to a temporary table and insert into the Western Australia table
+for file in $(find /media/temp -name "IDW*"); do 
+    mysql -u root -pDormitory-Outage0-Brought-Preachy -D bom -e "CREATE TEMPORARY TABLE tmp (SELECT * FROM Western_Australia); LOAD XML LOCAL INFILE '$file' INTO TABLE tmp ROWS IDENTIFIED BY '<observation>'; INSERT IGNORE INTO Western_Australia SELECT * FROM tmp; DROP TABLE tmp;"
+done
+
+#add IDS files to a temporary table and insert into the South Australia table
+for file in $(find /media/temp -name "IDS*"); do 
+    mysql -u root -pDormitory-Outage0-Brought-Preachy -D bom -e "CREATE TEMPORARY TABLE tmp (SELECT * FROM South_Australia); LOAD XML LOCAL INFILE '$file' INTO TABLE tmp ROWS IDENTIFIED BY '<observation>'; INSERT IGNORE INTO South_Australia SELECT * FROM tmp; DROP TABLE tmp;"
+done
+
+#add IDT files to a temporary table and insert into the Tasmania table
+for file in $(find /media/temp -name "IDT*"); do 
+    mysql -u root -pDormitory-Outage0-Brought-Preachy -D bom -e "CREATE TEMPORARY TABLE tmp (SELECT * FROM Tasmania); LOAD XML LOCAL INFILE '$file' INTO TABLE tmp ROWS IDENTIFIED BY '<observation>'; INSERT IGNORE INTO Tasmania SELECT * FROM tmp; DROP TABLE tmp;"
+done
+
+#add IDD files to a temporary table and insert into the Northern Territory table
+for file in $(find /media/temp -name "IDD*"); do 
+    mysql -u root -pDormitory-Outage0-Brought-Preachy -D bom -e "CREATE TEMPORARY TABLE tmp (SELECT * FROM Northern_Territory); LOAD XML LOCAL INFILE '$file' INTO TABLE tmp ROWS IDENTIFIED BY '<observation>'; INSERT IGNORE INTO Northern_Territory SELECT * FROM tmp; DROP TABLE tmp;"
+done
+
+#delete all files in /media/temp
+rm -rf /media/temp/*
